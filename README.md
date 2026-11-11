@@ -1,51 +1,79 @@
-# Investment debate advisor
+# Debate Stage
 
-Six LLM-powered advocate agents debate six asset classes — Stocks, Mutual
-Funds, Post Office Savings, Land/Real Estate, Gold, Bitcoin — in a sustained,
-natural conversation using **live market data**. A seventh referee/advisor
-scores the debate and gives the user balanced, plain-language guidance.
+A topic-driven debate platform. You pick the topic, pick the cast, and watch
+a referee + players + speakers argue it out on a stage — grounded in real
+data, with scorecard and guidance at the end. **Not advice-giving: balanced
+analysis of a topic.**
 
-> **Educational content only — not personalized financial advice.** Markets
-> carry risk of loss. Consult a licensed advisor for your situation.
+Two ways to run it:
 
-## Features
+1. **`stage.html`** — browser artifact. Configure topic and roster in the
+   UI, press *Generate & start*, and Claude writes the debate in-page.
+2. **`advisor.py`** — the original CLI version for the investment-advice
+   case: six fixed advocates (Stocks, Mutual Funds, Post Office, Real
+   Estate, Gold, Bitcoin) + a referee, backed by live `yfinance` prices.
 
-- **Real conversation, not monologues.** Every agent sees a running
-  transcript and directly rebuts others by name each round.
-- **Live prices every run** — S&P 500, Gold futures, VNQ (real-estate ETF
-  proxy), BTC-USD via `yfinance`. Post Office is fixed ~7%.
-- **Paced, not token-burning.** A configurable think-delay between turns
-  fills real time naturally; a rolling summary keeps prompt size bounded.
-- **Minimum 20 minutes and ≥12 rounds**, with hard safety caps on rounds
-  and tokens so it cannot run forever.
-- **Guardrails.** Agents have no tools, stay on-topic, and refuse role changes.
-- **Transcript saved** to a timestamped Markdown file.
+> Educational / analytical output only — not personalized advice.
 
-## Run locally
+## 1. Browser stage (`stage.html`)
+
+The stage is a single HTML file. Open it as a Claude artifact (it uses the
+Claude Artifact `sample` capability to write the debate without an API key
+on your machine).
+
+**Flow:**
+
+1. Open the artifact → **Configure topic & roster**.
+2. Type any topic ("Should remote work be the default?", "Nuclear vs
+   renewables for Japan's 2040 grid", "React Server Components: hype or
+   substance?" — anything).
+3. Edit the roster. Default: **1 referee + 2 players + 2 speakers**. Add,
+   remove, or rename characters; each gets a `kind` (referee / player /
+   speaker) and a free-text role/stance.
+4. **Generate & start** → Claude authors a 6-round debate grounded in
+   current facts, and the stage auto-plays it with spotlight, typing
+   bubble, and rolling transcript. A verdict scorecard appears at the end.
+
+Config persists in `localStorage` — refreshes keep your last debate.
+
+Advanced: paste a pre-authored JSON script (same shape the generator
+produces) into the "Advanced" box if you want to hand-write one or replay
+a previous debate.
+
+## 2. Investment-debate CLI (`advisor.py`)
+
+The original domain-specific debate: six advocate agents + a referee,
+each arguing for one of six asset classes with live market data.
 
 ```bash
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
-# Optional: export ANTHROPIC_MODEL=claude-sonnet-4-5
 python advisor.py --question "I'm 30, long horizon, where should I put $10k?"
 ```
 
-CLI flags:
+No API key? Run against a local Ollama model:
+
+```bash
+python advisor.py --backend ollama --question "..."
+```
+
+### CLI flags
 
 | Flag | Default | What |
 | --- | --- | --- |
 | `--minutes` | `20` | Minimum real-time duration (minutes) |
-| `--rounds-min` | `12` | Minimum full rounds (one turn per advocate = one round) |
+| `--rounds-min` | `12` | Minimum full rounds |
 | `--delay` | `4` | Per-turn thinking delay (seconds, jittered) |
-| `--max-rounds` | `40` | Hard safety cap on rounds |
-| `--question` | — | User question; interactive prompt if omitted |
+| `--max-rounds` | `40` | Hard safety cap |
+| `--backend` | `anthropic` | `anthropic` or `ollama` |
+| `--question` | — | User question; prompts interactively if omitted |
 | `--out-dir` | `./transcripts` | Where to save the final `.md` |
 
-Env vars: `ANTHROPIC_API_KEY` (required), `ANTHROPIC_MODEL`,
-`ANTHROPIC_SUMMARIZER_MODEL`, `MAX_TOTAL_INPUT_TOKENS`,
-`MAX_TOTAL_OUTPUT_TOKENS`.
+Env vars: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_SUMMARIZER_MODEL`,
+`MAX_TOTAL_INPUT_TOKENS`, `MAX_TOTAL_OUTPUT_TOKENS`,
+`OLLAMA_HOST` (default `http://127.0.0.1:11434`), `OLLAMA_MODEL`.
 
-## Run in the hardened Docker sandbox
+### Hardened Docker run
 
 ```bash
 docker build -t invest-debate .
@@ -70,36 +98,36 @@ docker run --rm \
 
 What that command gives you:
 
-- **`--read-only`** — the container filesystem is immutable; only
-  `/tmp` (tmpfs) and the mounted `transcripts/` volume are writable.
-- **`--cap-drop ALL` + `--security-opt no-new-privileges`** — no Linux
-  capabilities, no privilege escalation (no `setuid` surprises).
-- **`--pids-limit`, `--memory`, `--cpus`** — fork/mem/CPU bombs blocked.
-- **Non-root user** (`app`, uid baked in; `--user 1000:1000` for safety
-  when the volume is host-owned).
-- **No tools exposed to the LLM** — agents are plain `messages.create`
-  calls, so there is no path from the model to a shell or the filesystem.
-- **Python `-I`** — isolated mode, so planted `sitecustomize.py` /
-  `PYTHON*` env vars from an attacker-controlled working dir are ignored.
-- **Egress.** The only outbound traffic the program makes is to the
-  Anthropic API and `query*.finance.yahoo.com` (yfinance). If you run with
-  `--network` restricted to an egress proxy, allow those two destinations.
+- `--read-only` immutable rootfs; only `/tmp` + mounted `transcripts/` writable.
+- `--cap-drop ALL` + `--security-opt no-new-privileges` — no caps, no privilege
+  escalation.
+- Pid / memory / CPU limits block fork/mem bombs.
+- Non-root user (`app`, uid 1000).
+- No tools exposed to the LLM — plain `messages.create`, no shell path.
+- Python `-I` ignores planted `sitecustomize.py` / `PYTHON*` env vars.
+- Egress: Anthropic API + `query*.finance.yahoo.com` only.
 
-If `yfinance` cannot reach Yahoo (offline, blocked egress), the program
-logs that the quote is unavailable and the debate proceeds with reasoning
-only — so sandbox network restrictions do not break the app.
+## Design notes
+
+- The stage adapts to any roster size — podium positions compute along an
+  arc, colors assign from a 12-color palette, scorecard rows match the
+  cast.
+- The browser stage asks Claude to produce one JSON object with the whole
+  debate (`rounds`, `summaries`, `round_summaries`, `verdict`). The viewer
+  renders that object; there's no streaming / no multi-turn agent loop in
+  the browser.
+- The CLI version does the opposite: it drives a long conversation turn by
+  turn with a rolling summary, pacing itself to ≥20 minutes. Use it when
+  you want a deep, slow debate saved as Markdown.
+- Neither mode gives personalized advice. The referee returns a balanced
+  verdict and short analytical guidance.
 
 ## Files
 
-- `advisor.py` — the whole program (agents, loop, referee, transcript I/O)
-- `requirements.txt` — `anthropic`, `yfinance`
-- `Dockerfile` — non-root, minimal, `ENTRYPOINT`-driven
-- `README.md` — this file
-
-## Notes
-
-- Agents are capped at ~350 output tokens/turn; the referee at ~1800.
-- Older rounds are summarized every 3 rounds; the last 3 rounds stay
-  verbatim. This keeps prompts bounded over the full 20 minutes.
-- The referee runs **after** the minimum time/round thresholds are met,
-  then the transcript is written and the process exits.
+| File | What |
+| --- | --- |
+| `stage.html` | Browser debate stage (Claude Artifact) |
+| `advisor.py` | CLI investment-debate program |
+| `requirements.txt` | `anthropic`, `yfinance` |
+| `Dockerfile` | Sandbox for `advisor.py` |
+| `.gitignore` | Ignores `transcripts/`, caches, venvs |
