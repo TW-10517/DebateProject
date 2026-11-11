@@ -1,0 +1,596 @@
+<title>Debate Stage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root {
+  --bg:#0b0d14; --bg-2:#141826; --panel:#171b2b; --fg:#e8e4d9; --muted:#8d8a82;
+  --rule:#272c42; --accent:#f0b44c; --stage-a:#2a1d12; --stage-b:#1a1208;
+  --spotlight:rgba(255,220,160,0.35); --rhea:#c084fc;
+  --c0:#60a5fa; --c1:#2dd4bf; --c2:#facc15; --c3:#4ade80; --c4:#e8b85c;
+  --c5:#fb923c; --c6:#c084fc; --c7:#f472b6; --c8:#a3e635; --c9:#94a3b8;
+  --c10:#e879f9; --c11:#22d3ee;
+  --font-display:"Fraunces",Georgia,serif;
+  --font-body:"Inter",system-ui,Segoe UI,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg:#efe8da; --bg-2:#f6f1e4; --panel:#fff; --fg:#1a1510; --muted:#6b6560;
+  --rule:#d8d1c0; --accent:#b4532a; --stage-a:#4b3620; --stage-b:#2d1f10;
+  --spotlight:rgba(255,220,160,0.5); color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); margin: 0; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+.app { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 20px; max-width: 1440px; margin: 0 auto; padding: 20px 0 24px; min-height: 100%; }
+@media (max-width: 960px) { .app { grid-template-columns: 1fr; } }
+.stage-wrap { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+header.hdr h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px,4vw,36px); letter-spacing: -0.02em; margin: 0 0 4px; }
+header.hdr .sub { color: var(--muted); font-size: 13px; margin: 0; }
+.topic-chip { display: inline-block; font-family: var(--font-display); font-size: 15px; line-height: 1.4; padding: 8px 14px; background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 6px; margin-top: 8px; max-width: 100%; }
+.config-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+button.btn { font-family: var(--font-body); font-weight: 600; font-size: 13px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--rule); background: var(--bg-2); color: var(--fg); cursor: pointer; }
+button.btn.primary { background: var(--accent); color: #1a1510; border-color: var(--accent); }
+button.btn.ghost { background: transparent; }
+button.btn:hover { filter: brightness(1.1); }
+button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.stage { position: relative; aspect-ratio: 16/10; min-height: 420px;
+  background: radial-gradient(ellipse at 50% 20%, rgba(255,230,180,0.08), transparent 60%), linear-gradient(to bottom, var(--bg-2) 0%, var(--bg-2) 55%, var(--stage-a) 55%, var(--stage-b) 100%);
+  border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; perspective: 1200px; }
+.floor { position: absolute; bottom: 0; left: -10%; right: -10%; height: 45%; transform: rotateX(62deg); transform-origin: 50% 100%;
+  background: repeating-linear-gradient(to right, transparent 0 44px, rgba(0,0,0,0.25) 44px 46px), linear-gradient(to bottom, var(--stage-a), var(--stage-b)); }
+.spotlight { position: absolute; top: -10%; width: 55%; height: 92%;
+  background: radial-gradient(ellipse at 50% 0%, var(--spotlight) 0%, transparent 60%);
+  pointer-events: none; opacity: 0; left: 50%; transform: translateX(-50%);
+  transition: left 0.6s cubic-bezier(.4,0,.2,1), opacity 0.4s; }
+.spotlight.on { opacity: 1; }
+.podium { position: absolute; width: 108px; text-align: center; transform: translate(-50%, -50%); transition: transform 0.4s, filter 0.4s; }
+.podium.speaking { filter: drop-shadow(0 0 20px var(--pcolor)); }
+.avatar { width: 52px; height: 52px; margin: 0 auto 6px; position: relative; }
+.avatar svg { width: 100%; height: 100%; display: block; }
+.avatar::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--pcolor); opacity: 0.5; }
+.podium.speaking .avatar::after { opacity: 1; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: 0.5; } }
+.pbox { background: linear-gradient(to bottom, #3a2a18, #1f1408); border: 1px solid rgba(0,0,0,0.5); border-radius: 4px 4px 2px 2px; padding: 6px 4px; box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08); }
+.pname { font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--pcolor); line-height: 1.1; }
+.prole { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-top: 2px; }
+.podium.referee .avatar { width: 60px; height: 60px; }
+.podium.referee .pname { font-size: 14px; }
+.bubble-stage { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); max-width: min(540px, 85%);
+  background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--bcolor, var(--accent));
+  border-radius: 10px; padding: 12px 16px; font-size: 14px; line-height: 1.5;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.4s; }
+.bubble-stage.show { opacity: 1; }
+.bubble-stage .b-who { font-weight: 600; color: var(--bcolor, var(--accent)); font-size: 13px; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bubble-stage .b-role { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.bubble-stage .b-headline { font-weight: 600; font-size: 15px; margin: 4px 0 6px; line-height: 1.35; color: var(--fg); }
+.bubble-stage .b-headline:empty { display: none; }
+.bubble-stage .b-points { margin: 0 0 8px; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: var(--fg); }
+.bubble-stage .b-points:empty { display: none; }
+.bubble-stage .b-points li { margin: 0 0 2px; }
+.bubble-stage #b-text { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 6px 0 0; padding-top: 6px; border-top: 1px dashed var(--rule); }
+.bubble-stage #b-text:empty { display: none; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; }
+.counter { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.speed { font-family: var(--font-body); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.speed input { width: 90px; }
+.disclaimer { font-size: 11px; color: var(--muted); font-style: italic; margin-top: 2px; }
+.history { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: sticky; top: 20px; height: calc(100vh - 44px); max-height: 940px; }
+.history-head { padding: 14px 16px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.history-head h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.history-head .meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.history-scroll { flex: 1 1 auto; overflow-y: auto; padding: 14px 16px; scroll-behavior: smooth; }
+.h-round-block { margin: 18px 0 8px; padding: 10px 12px; background: linear-gradient(180deg, rgba(240,180,76,0.08), transparent); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 8px; }
+.h-round-block:first-child { margin-top: 0; }
+.h-round-label { font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 4px; }
+.h-round-headline { font-size: 13px; font-weight: 600; color: var(--fg); line-height: 1.35; margin: 0 0 4px; }
+.h-round-points { margin: 4px 0 0; padding-left: 16px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.h-turn { display: flex; gap: 8px; margin: 0 0 10px; align-items: flex-start; opacity: 0; transform: translateY(6px); transition: opacity 0.3s, transform 0.3s; }
+.h-turn.visible { opacity: 1; transform: none; }
+.h-turn.current .h-bubble { box-shadow: 0 0 0 2px var(--hcolor); }
+.h-dot { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: var(--hcolor); color: #0b0d14; font-weight: 700; font-size: 11px; display: grid; place-items: center; margin-top: 2px; }
+.h-bubble { flex: 1; min-width: 0; background: var(--bg-2); border-left: 2px solid var(--hcolor); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; line-height: 1.5; }
+.h-who { font-weight: 600; color: var(--hcolor); font-size: 12px; margin-bottom: 2px; }
+.h-headline { font-weight: 600; font-size: 12.5px; color: var(--fg); margin: 2px 0 4px; line-height: 1.35; }
+.h-points { margin: 0 0 6px; padding-left: 16px; font-size: 11.5px; line-height: 1.5; color: var(--fg); }
+.h-full-toggle { background: none; border: none; color: var(--muted); font-size: 10.5px; padding: 0; cursor: pointer; text-decoration: underline dotted; font-family: var(--font-body); }
+.h-full { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--rule); }
+.h-full.show { display: block; }
+.h-text { margin: 0; font-size: 12.5px; color: var(--muted); }
+.scorecard { display: none; margin-top: 14px; }
+.scorecard.show { display: block; }
+.sc-card { background: linear-gradient(180deg, rgba(192,132,252,0.06), transparent 40%), var(--panel); border: 1px solid var(--rhea); border-radius: 14px; padding: 20px 22px; }
+.sc-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.sc-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--rhea); letter-spacing: -0.01em; }
+.sc-head .as-of { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.medals { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.medal { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-2); border: 1px solid var(--rule); border-left: 4px solid var(--mcolor); border-radius: 10px; }
+.medal-badge { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.medal-name { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--mcolor); line-height: 1.1; margin-top: 2px; }
+.medal-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.medal-score { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; font-size: 13px; }
+.medal-score b { font-size: 22px; color: var(--fg); font-family: var(--font-display); }
+.sc-section-title { font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--muted); margin: 20px 0 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: 170px 1fr; gap: 14px; align-items: center; padding: 10px 12px; background: var(--bg-2); border: 1px solid var(--rule); border-left: 3px solid var(--rcolor); border-radius: 8px; }
+@media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+.row-label .n { font-family: var(--font-display); font-weight: 600; color: var(--rcolor); font-size: 15px; }
+.row-label .r { color: var(--muted); font-size: 11px; }
+.meters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
+@media (max-width: 500px) { .meters { grid-template-columns: 1fr; } }
+.meter { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.meter-label { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.meter-label b { color: var(--fg); font-size: 11.5px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 8px; background: var(--rule); border-radius: 4px; overflow: hidden; }
+.bar-fill { position: absolute; top: 0; left: 0; bottom: 0; background: var(--rcolor); border-radius: 4px; transition: width 0.8s cubic-bezier(.3,0,.2,1); }
+.row-note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); line-height: 1.5; padding-top: 4px; border-top: 1px dashed var(--rule); margin-top: 6px; }
+.guidance-box { margin-top: 16px; padding: 14px 16px; background: var(--bg-2); border: 1px solid var(--rule); border-radius: 10px; font-size: 13.5px; line-height: 1.6; }
+.guidance-box p { margin: 0 0 8px; }
+.guidance-box p:last-child { margin: 0; color: var(--muted); font-style: italic; font-size: 12px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: flex-start; justify-content: center; padding: 32px 16px; z-index: 50; overflow-y: auto; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 24px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-family: var(--font-display); margin: 0 0 16px; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.modal label { display: block; margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+.modal input, .modal textarea { width: 100%; background: var(--bg-2); color: var(--fg); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; font-family: var(--font-body); font-size: 14px; }
+.modal textarea { font-family: var(--font-mono); font-size: 12px; min-height: 160px; resize: vertical; }
+.roster { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.ros-row { display: grid; grid-template-columns: 24px 110px 1fr 1.5fr 28px; gap: 8px; align-items: center; }
+.ros-row .swatch { height: 28px; border-radius: 4px; background: var(--rcolor); }
+.ros-row select, .ros-row input { background: var(--bg-2); color: var(--fg); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; font-family: var(--font-body); font-size: 13px; }
+.ros-row button { background: none; border: 1px solid var(--rule); color: var(--muted); border-radius: 6px; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center; font-size: 16px; line-height: 1; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; align-items: center; }
+.help-note { font-size: 12px; color: var(--muted); margin: 6px 0 0; line-height: 1.5; }
+.copy-ok { color: #4ade80; font-size: 12px; }
+</style>
+
+<div class="app">
+  <div class="stage-wrap">
+    <header class="hdr">
+      <h1 id="hdr-title">Debate Stage</h1>
+      <p class="sub">Topic-driven debate with real data. Change the topic or roster from the Configure panel.</p>
+      <div class="topic-chip" id="topic-chip">Loading…</div>
+      <div class="config-row">
+        <button class="btn" id="btn-config">Configure topic &amp; roster</button>
+        <button class="btn ghost" id="btn-load-script">Paste new script</button>
+      </div>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="floor"></div>
+      <div class="spotlight" id="spotlight"></div>
+      <div id="podium-arc"></div>
+      <div class="bubble-stage" id="bubble">
+        <div class="b-who"><span id="b-name">—</span><span class="b-role" id="b-role"></span></div>
+        <div id="b-headline" class="b-headline"></div>
+        <ul id="b-points" class="b-points"></ul>
+        <div id="b-text">Press <b>Start</b> to begin the debate.</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn primary" id="btn-start">Start</button>
+      <button class="btn" id="btn-pause" disabled>Pause</button>
+      <button class="btn" id="btn-reset">Reset</button>
+      <label class="speed">Pace
+        <input type="range" id="speed" min="1" max="12" value="1" step="1">
+        <span id="speed-label">live</span>
+      </label>
+      <span class="counter" id="counter">— / —</span>
+    </div>
+    <p class="disclaimer" id="disclaimer-line"></p>
+
+    <section class="scorecard" id="scorecard"><div class="sc-card">
+      <div class="sc-head"><h2>Referee Verdict</h2><span class="as-of" id="sc-asof"></span></div>
+      <div class="medals" id="sc-medals"></div>
+      <div class="sc-section-title">Scores</div>
+      <div class="rows" id="sc-rows"></div>
+      <div class="sc-section-title">Guidance</div>
+      <div class="guidance-box" id="sc-guidance"></div>
+    </div></section>
+  </div>
+
+  <aside class="history">
+    <div class="history-head">
+      <h2>Transcript</h2>
+      <span class="meta" id="history-meta">0 / 0</span>
+    </div>
+    <div class="history-scroll" id="history"></div>
+  </aside>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" id="modal">
+    <h2>Configure debate</h2>
+
+    <label>Topic</label>
+    <input type="text" id="cfg-topic" placeholder="e.g. Should remote work be the default for knowledge workers?">
+    <p class="help-note">Any topic. The referee + players + speakers will debate it grounded in current real data.</p>
+
+    <label>Roster</label>
+    <div class="roster" id="cfg-roster"></div>
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn" type="button" id="btn-add-char">+ Add character</button>
+      <button class="btn ghost" type="button" id="btn-reset-roster">Reset to default (1 ref + 2 players + 2 speakers)</button>
+    </div>
+    <p class="help-note">Default: 1 referee + 2 players (opposing sides) + 2 speakers (fact-checkers). Add or remove any you want.</p>
+
+    <label>Generate debate</label>
+    <p class="help-note">Click Generate — Claude writes the debate right here and starts it. May take 30–90 seconds.</p>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="btn-generate">Generate &amp; start</button>
+      <button class="btn ghost" type="button" id="btn-cancel">Close</button>
+      <span id="gen-status" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <p class="help-note" id="load-err" style="color:#f87171; display:none;"></p>
+
+    <details style="margin-top:20px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px">Advanced: paste a JSON script instead</summary>
+      <label style="margin-top:12px">Paste debate script (JSON)</label>
+      <textarea id="cfg-script" placeholder='{"topic":"…","rounds":[…],"verdict":{…}}'></textarea>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="btn-load">Load pasted script</button>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script type="application/json" id="debate-data">
+{"topic":"","disclaimer":"","roster":[],"rounds":[],"summaries":[],"round_summaries":{},"verdict":null,"fetched_at":""}
+</script>
+
+<script>
+(function () {
+  const PALETTE = ["var(--c0)","var(--c1)","var(--c2)","var(--c3)","var(--c4)","var(--c5)","var(--c6)","var(--c7)","var(--c8)","var(--c9)","var(--c10)","var(--c11)"];
+  const DEFAULT_ROSTER = [
+    {name:"Rhea",kind:"referee",role:"Referee"},
+    {name:"Player A",kind:"player",role:"For"},
+    {name:"Player B",kind:"player",role:"Against"},
+    {name:"Speaker 1",kind:"speaker",role:"Fact-checker"},
+    {name:"Speaker 2",kind:"speaker",role:"Opposing fact-checker"},
+  ];
+  let data = JSON.parse(document.getElementById("debate-data").textContent);
+  if (!data.roster || !data.roster.length) data.roster = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
+  try { const s = localStorage.getItem("debate-data"); if (s) data = JSON.parse(s); } catch(_) {}
+
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), podiumArc = $("podium-arc"), spotlight = $("spotlight");
+  const bubble = $("bubble"), bName = $("b-name"), bRole = $("b-role"), bText = $("b-text");
+  const bHeadline = $("b-headline"), bPoints = $("b-points");
+  const historyEl = $("history"), metaEl = $("history-meta"), counterEl = $("counter");
+  const topicChip = $("topic-chip"), disclaimerEl = $("disclaimer-line"), scorecardEl = $("scorecard");
+  const btnStart = $("btn-start"), btnPause = $("btn-pause"), btnReset = $("btn-reset");
+  const speedEl = $("speed"), speedLabel = $("speed-label");
+  const modalBg = $("modal-bg"), cfgTopic = $("cfg-topic"), cfgRoster = $("cfg-roster"), cfgScript = $("cfg-script");
+
+  let agents = {}, timeline = [], turnNodes = [];
+
+  function escapeHtml(s) { return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  function assignAgents() {
+    agents = {};
+    let ci = 0;
+    for (const c of (data.roster || [])) {
+      const color = c.kind === "referee" ? "var(--rhea)" : PALETTE[ci++ % PALETTE.length];
+      agents[c.name] = { role: c.role || "", color, initial: (c.name[0]||"?").toUpperCase(), kind: c.kind };
+    }
+  }
+
+  function placePodiums() {
+    podiumArc.innerHTML = "";
+    const roster = data.roster || [];
+    const refs = roster.filter(c => c.kind === "referee");
+    const others = roster.filter(c => c.kind !== "referee");
+    refs.forEach((r, i) => addPodium(r, 50 + (i - (refs.length-1)/2) * 12, 26, true));
+    const N = others.length;
+    others.forEach((c, i) => {
+      const t = N === 1 ? 0.5 : i / (N - 1);
+      const x = 12 + t * 76;
+      const edge = Math.abs(t - 0.5) * 2;
+      const y = 55 + edge * 10;
+      addPodium(c, x, y, false);
+    });
+  }
+
+  function addPodium(c, x, y, isRef) {
+    const a = agents[c.name]; if (!a) return;
+    const el = document.createElement("div");
+    el.className = "podium" + (isRef ? " referee" : "");
+    el.dataset.who = c.name;
+    el.style.left = x + "%"; el.style.top = y + "%";
+    el.style.setProperty("--pcolor", a.color);
+    el.innerHTML = `<div class="avatar"><svg viewBox="0 0 64 64"><circle cx="32" cy="22" r="11" fill="${a.color}"/><path d="M12 60 Q32 38 52 60 Z" fill="${a.color}"/></svg></div><div class="pbox"><div class="pname">${escapeHtml(c.name)}</div><div class="prole">${escapeHtml(c.role||"")}</div></div>`;
+    podiumArc.appendChild(el);
+  }
+
+  function buildHistory() {
+    timeline = []; turnNodes = []; historyEl.innerHTML = "";
+    const summaries = data.summaries || [], roundSums = data.round_summaries || {};
+    let si = 0;
+    for (const r of (data.rounds || [])) {
+      const block = document.createElement("div");
+      block.className = "h-round-block";
+      const rs = roundSums[String(r.n)] || {};
+      block.innerHTML = `<div class="h-round-label">Round ${r.n}</div><div class="h-round-headline"></div><ul class="h-round-points"></ul>`;
+      block.querySelector(".h-round-headline").textContent = rs.headline || "";
+      if (!rs.headline) block.querySelector(".h-round-headline").style.display = "none";
+      const ul = block.querySelector(".h-round-points");
+      (rs.points||[]).forEach(p => { const li = document.createElement("li"); li.textContent = p; ul.appendChild(li); });
+      if (!(rs.points||[]).length) ul.style.display = "none";
+      historyEl.appendChild(block);
+      for (const t of r.turns) {
+        const s = summaries[si] || {}; si++;
+        timeline.push({round: r.n, who: t.who, text: t.text, headline: s.headline || "", points: s.points || []});
+        const a = agents[t.who] || {role:"",color:"var(--accent)",initial:"?"};
+        const row = document.createElement("div");
+        row.className = "h-turn"; row.style.setProperty("--hcolor", a.color);
+        row.innerHTML = `<div class="h-dot">${a.initial}</div><div class="h-bubble"><div class="h-who">${escapeHtml(t.who)} <span style="color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:0.08em">${escapeHtml(a.role)}</span></div><div class="h-headline"></div><ul class="h-points"></ul><button class="h-full-toggle" type="button">show full quote</button><div class="h-full"><p class="h-text"></p></div></div>`;
+        row.querySelector(".h-headline").textContent = s.headline || "";
+        const ul2 = row.querySelector(".h-points");
+        (s.points||[]).forEach(p => { const li = document.createElement("li"); li.textContent = p; ul2.appendChild(li); });
+        if (!s.headline) row.querySelector(".h-headline").style.display = "none";
+        if (!(s.points||[]).length) ul2.style.display = "none";
+        row.querySelector(".h-text").textContent = t.text;
+        const toggle = row.querySelector(".h-full-toggle"), full = row.querySelector(".h-full");
+        toggle.addEventListener("click", () => { full.classList.toggle("show"); toggle.textContent = full.classList.contains("show") ? "hide full quote" : "show full quote"; });
+        historyEl.appendChild(row);
+        turnNodes.push(row);
+      }
+    }
+    metaEl.textContent = `0 / ${timeline.length}`;
+    counterEl.textContent = `Round —/${(data.rounds||[]).length} · Turn —/${timeline.length}`;
+  }
+
+  function fullRender() {
+    assignAgents(); placePodiums(); buildHistory();
+    topicChip.textContent = data.topic ? "“" + data.topic + "”" : "No topic set yet — open Configure.";
+    disclaimerEl.textContent = data.disclaimer || "Educational analysis grounded in the data supplied with the script.";
+    scorecardEl.classList.remove("show"); bubble.classList.remove("show"); spotlight.classList.remove("on");
+    bName.textContent = "—"; bRole.textContent = ""; bHeadline.textContent = ""; bPoints.innerHTML = "";
+    bText.textContent = timeline.length ? "Press Start to begin the debate." : "Open Configure to set a topic and load a script.";
+    btnStart.disabled = !timeline.length; btnStart.textContent = "Start";
+  }
+
+  let cursor = 0, playing = false, timer = null, typing = null;
+  const speedFactor = () => parseInt(speedEl.value,10) || 1;
+  const paceLabel = () => { const f = speedFactor(); return f===1 ? "live" : Math.round(600/f) + "s/turn"; };
+  speedEl.addEventListener("input", () => { speedLabel.textContent = paceLabel(); });
+  speedLabel.textContent = paceLabel();
+  const podiumOf = w => stage.querySelector(`.podium[data-who="${CSS.escape(w)}"]`);
+  function clearSpeaking() { stage.querySelectorAll(".podium.speaking").forEach(p=>p.classList.remove("speaking")); turnNodes.forEach(n=>n.classList.remove("current")); }
+
+  function typeOut(text, onDone) {
+    bText.textContent = "";
+    let i = 0; const f = speedFactor();
+    const step = Math.max(1, Math.round(2/Math.sqrt(f)));
+    const interval = Math.max(8, Math.round(30/f));
+    (function tick(){ if(!playing) return; i += step; bText.textContent = text.slice(0,i); if (i>=text.length){bText.textContent=text; onDone();} else typing = setTimeout(tick, interval); })();
+  }
+
+  function showTurn(idx) {
+    const t = timeline[idx]; if (!t) return finish();
+    const a = agents[t.who] || {};
+    clearSpeaking();
+    const pod = podiumOf(t.who);
+    if (pod) { pod.classList.add("speaking"); const r = pod.getBoundingClientRect(), s = stage.getBoundingClientRect(); spotlight.style.left = (((r.left+r.width/2)-s.left)/s.width*100)+"%"; spotlight.classList.add("on"); }
+    bubble.style.setProperty("--bcolor", a.color || "var(--accent)");
+    bName.textContent = t.who; bRole.textContent = a.role || "";
+    bHeadline.textContent = t.headline || "";
+    bPoints.innerHTML = "";
+    (t.points||[]).forEach(p => { const li = document.createElement("li"); li.textContent = p; bPoints.appendChild(li); });
+    bubble.classList.add("show");
+    turnNodes[idx].classList.add("visible","current");
+    turnNodes[idx].scrollIntoView({block:"center",behavior:"smooth"});
+    metaEl.textContent = `${idx+1} / ${timeline.length}`;
+    counterEl.textContent = `Round ${t.round}/${(data.rounds||[]).length} · Turn ${idx+1}/${timeline.length}`;
+    const start = Date.now();
+    typeOut(t.text, () => {
+      if (!playing) return;
+      const totalBudget = Math.max(1500, Math.round(30000/speedFactor()));
+      const rem = Math.max(400, totalBudget - (Date.now()-start));
+      timer = setTimeout(() => { cursor++; showTurn(cursor); }, rem);
+    });
+  }
+
+  function finish() {
+    playing = false; btnStart.disabled = true; btnPause.disabled = true;
+    const refName = (data.roster||[]).find(c=>c.kind==="referee")?.name || "Referee";
+    bName.textContent = refName; bRole.textContent = "Verdict";
+    bubble.style.setProperty("--bcolor","var(--rhea)");
+    bText.textContent = "Scorecard and guidance below.";
+    clearSpeaking(); renderScorecard();
+    scorecardEl.classList.add("show");
+    scorecardEl.scrollIntoView({block:"start",behavior:"smooth"});
+    counterEl.textContent = `Debate complete · ${timeline.length} turns`;
+  }
+
+  function renderScorecard() {
+    const v = data.verdict && data.verdict.structured;
+    $("sc-asof").textContent = data.fetched_at ? "As of " + data.fetched_at : "";
+    const medals = $("sc-medals"), rows = $("sc-rows"), guid = $("sc-guidance");
+    medals.innerHTML = ""; rows.innerHTML = ""; guid.innerHTML = "";
+    if (!v) { medals.innerHTML = '<div style="color:var(--muted);font-size:13px">No verdict in the script.</div>'; return; }
+    const scores = v.scores || {};
+    const mkMedal = (badge, name) => {
+      if (!name || !agents[name]) return;
+      const a = agents[name], s = scores[name] || {};
+      const total = (+s.persuasiveness||+s.validity||0) + (+s.factual||+s.profit||0);
+      const el = document.createElement("div");
+      el.className = "medal"; el.style.setProperty("--mcolor", a.color);
+      el.innerHTML = `<div><div class="medal-badge">${badge}</div><div class="medal-name">${escapeHtml(name)}</div><div class="medal-sub">${escapeHtml(a.role||"")}</div></div><div class="medal-score"><b>${total}</b><span style="color:var(--muted)">&nbsp;/ 20</span></div>`;
+      medals.appendChild(el);
+    };
+    mkMedal("Winner", v.winner);
+    if (v.runner_up && v.runner_up !== v.winner) mkMedal("Runner-up", v.runner_up);
+    for (const name in scores) {
+      const a = agents[name]; if (!a) continue;
+      const s = scores[name];
+      const m1 = +s.persuasiveness || +s.validity || 0;
+      const m2 = +s.factual || +s.profit || 0;
+      const l1 = s.persuasiveness != null ? "Persuasiveness" : "Validity";
+      const l2 = s.factual != null ? "Factual grounding" : "Profit";
+      const row = document.createElement("div");
+      row.className = "row"; row.style.setProperty("--rcolor", a.color);
+      row.innerHTML = `<div class="row-label"><div class="n">${escapeHtml(name)}</div><div class="r">${escapeHtml(a.role||"")}</div></div><div class="meters"><div class="meter"><div class="meter-label">${l1} <b>${m1}/10</b></div><div class="bar"><div class="bar-fill" style="width:${m1*10}%"></div></div></div><div class="meter"><div class="meter-label">${l2} <b>${m2}/10</b></div><div class="bar"><div class="bar-fill" style="width:${m2*10}%;opacity:.6"></div></div></div></div>${s.note?`<div class="row-note">${escapeHtml(s.note)}</div>`:""}`;
+      rows.appendChild(row);
+    }
+    (data.verdict.guidance || "").split(/\n\n+/).filter(Boolean).forEach(p => { const el = document.createElement("p"); el.textContent = p; guid.appendChild(el); });
+  }
+
+  function start() {
+    if (playing) return;
+    if (!timeline.length) { alert("No script loaded — open Configure to load one."); return; }
+    playing = true; btnStart.disabled = true; btnPause.disabled = false;
+    if (cursor >= timeline.length) cursor = 0;
+    showTurn(cursor);
+  }
+  function pause() { playing = false; btnStart.disabled = false; btnPause.disabled = true; btnStart.textContent = "Resume"; if (timer) clearTimeout(timer); if (typing) clearTimeout(typing); }
+  function reset() { pause(); cursor = 0; btnStart.textContent = "Start"; btnStart.disabled = !timeline.length; btnPause.disabled = true; clearSpeaking(); spotlight.classList.remove("on"); turnNodes.forEach(n=>n.classList.remove("visible","current")); scorecardEl.classList.remove("show"); bubble.classList.remove("show"); bName.textContent = "—"; bRole.textContent = ""; bHeadline.textContent = ""; bPoints.innerHTML = ""; bText.textContent = "Press Start to begin the debate."; metaEl.textContent = `0 / ${timeline.length}`; counterEl.textContent = `Round —/${(data.rounds||[]).length} · Turn —/${timeline.length}`; }
+  btnStart.addEventListener("click", start);
+  btnPause.addEventListener("click", pause);
+  btnReset.addEventListener("click", reset);
+
+  const KINDS = ["referee","player","speaker"];
+  function openConfig() {
+    cfgTopic.value = data.topic || "";
+    renderRosterEditor(JSON.parse(JSON.stringify(data.roster || DEFAULT_ROSTER)));
+    cfgScript.value = "";
+    clearErr();
+    const btn = $("btn-generate"); if (btn) { btn.disabled = false; btn.textContent = "Generate & start"; }
+    $("gen-status").textContent = "";
+    modalBg.classList.add("show");
+  }
+  function closeConfig() { modalBg.classList.remove("show"); }
+  function renderRosterEditor(roster) {
+    cfgRoster.innerHTML = "";
+    let ci = 0;
+    roster.forEach((c, i) => {
+      const row = document.createElement("div");
+      row.className = "ros-row";
+      const color = c.kind === "referee" ? "var(--rhea)" : PALETTE[ci++ % PALETTE.length];
+      row.style.setProperty("--rcolor", color);
+      row.innerHTML = `<div class="swatch"></div><select aria-label="kind">${KINDS.map(k=>`<option value="${k}" ${k===c.kind?"selected":""}>${k}</option>`).join("")}</select><input type="text" placeholder="Name" value="${escapeHtml(c.name||"")}" aria-label="name"><input type="text" placeholder="Role / stance" value="${escapeHtml(c.role||"")}" aria-label="role"><button type="button" aria-label="remove">×</button>`;
+      row.querySelector("button").addEventListener("click", () => { const cur = readRoster(); cur.splice(i,1); renderRosterEditor(cur); });
+      cfgRoster.appendChild(row);
+    });
+  }
+  function readRoster() {
+    return [...cfgRoster.querySelectorAll(".ros-row")].map(r => ({
+      kind: r.querySelector("select").value,
+      name: r.querySelectorAll("input")[0].value.trim() || "(unnamed)",
+      role: r.querySelectorAll("input")[1].value.trim(),
+    }));
+  }
+  $("btn-config").addEventListener("click", openConfig);
+  $("btn-load-script").addEventListener("click", openConfig);
+  $("btn-cancel").addEventListener("click", closeConfig);
+  $("btn-add-char").addEventListener("click", () => {
+    const cur = readRoster();
+    const nPlayers = cur.filter(c=>c.kind==="player").length;
+    const kind = nPlayers < 2 ? "player" : "speaker";
+    cur.push({name:"Character "+(cur.length+1), kind, role:""});
+    renderRosterEditor(cur);
+  });
+  $("btn-reset-roster").addEventListener("click", () => renderRosterEditor(JSON.parse(JSON.stringify(DEFAULT_ROSTER))));
+
+  function buildPrompt(topic, roster) {
+    return [
+      "You are Claude, authoring a debate script. Produce ONE JSON object only, no markdown fences, no prose outside the JSON.",
+      "",
+      "Debate topic: " + JSON.stringify(topic),
+      "",
+      "Roster (" + roster.length + " characters):",
+      ...roster.map(c => `  - ${c.name} [${c.kind}] — ${c.role}`),
+      "",
+      "Rules:",
+      "- Ground every claim in current real-world facts. Cite only verifiable facts, with their numbers when relevant.",
+      "- Each non-referee character speaks once per round. Rounds total: 6.",
+      "- Each turn: 2-3 sentences, under 60 words. Opens by naming another character and conceding or rebutting a specific claim. Introduces a new angle each round.",
+      "- No stage directions. No disclaimers inside turns.",
+      "- After round 6, the referee produces a structured verdict + 2-3 paragraphs of balanced guidance (no advice-giving).",
+      "",
+      "Output JSON shape EXACTLY:",
+      "{",
+      '  "topic": "<topic>",',
+      '  "fetched_at": "<ISO date>",',
+      '  "disclaimer": "<one-line caveat>",',
+      '  "roster": <echo input>,',
+      '  "rounds": [ { "n": 1, "turns": [ {"who":"<name>","text":"<quote>"}, ... ] }, ... 6 rounds ],',
+      '  "summaries": [ {"headline":"<=10w","points":["<=14w","<=14w","<=14w"]}, ... one per turn in order ],',
+      '  "round_summaries": { "1": {"headline":"<=12w","points":["<=16w" x4]}, ... },',
+      '  "verdict": {',
+      '    "structured": {',
+      '      "scores": { "<non-referee name>": {"persuasiveness":1-10,"factual":1-10,"note":"<=18w"}, ... all non-referees },',
+      '      "winner":"<name>","runner_up":"<name>"',
+      "    },",
+      '    "guidance": "<2-3 short paragraphs separated by blank lines>"',
+      "  }",
+      "}",
+      "",
+      "Return the JSON only. Nothing before or after it.",
+    ].join("\n");
+  }
+
+  function applyScript(parsed, editedTopic, editedRoster) {
+    if (!parsed.rounds || !Array.isArray(parsed.rounds)) throw new Error("Script missing `rounds` array.");
+    if (!parsed.rounds.every(r => Array.isArray(r.turns))) throw new Error("Each round must have a `turns` array.");
+    data = {
+      topic: parsed.topic || editedTopic,
+      fetched_at: parsed.fetched_at || new Date().toISOString().slice(0,10),
+      disclaimer: parsed.disclaimer || "",
+      roster: parsed.roster && parsed.roster.length ? parsed.roster : editedRoster,
+      rounds: parsed.rounds,
+      summaries: parsed.summaries || [],
+      round_summaries: parsed.round_summaries || {},
+      verdict: parsed.verdict || null,
+    };
+    try { localStorage.setItem("debate-data", JSON.stringify(data)); } catch(_) {}
+    closeConfig(); fullRender(); setTimeout(start, 250);
+  }
+
+  $("btn-generate").addEventListener("click", async () => {
+    clearErr();
+    const topic = cfgTopic.value.trim();
+    const roster = readRoster();
+    if (!topic) { showErr("Enter a topic."); return; }
+    if (!roster.length) { showErr("Add at least one character."); return; }
+    const btn = $("btn-generate"), status = $("gen-status");
+    btn.disabled = true; btn.textContent = "Generating…";
+    status.textContent = "Asking Claude…";
+    try {
+      const sample = await claude.use("sample");
+      if (!sample) throw new Error("Claude sampling isn't available for this viewer. Use the Advanced panel to paste a script instead.");
+      const prompt = buildPrompt(topic, roster);
+      const parsed = await sample.json(prompt, {
+        modelTier: "complex",
+        onText: ({text}) => { status.textContent = "Writing… " + (text.length) + " chars"; },
+      });
+      status.textContent = "Loading debate…";
+      applyScript(parsed, topic, roster);
+    } catch (e) {
+      showErr("Generation failed: " + (e && e.message ? e.message : e));
+      btn.disabled = false; btn.textContent = "Generate & start";
+      status.textContent = "";
+    }
+  });
+
+  function showErr(msg) { const el = $("load-err"); el.textContent = msg; el.style.display = "block"; console.error("[debate]", msg); }
+  function clearErr() { const el = $("load-err"); el.textContent = ""; el.style.display = "none"; }
+  $("btn-load").addEventListener("click", () => {
+    clearErr();
+    let raw = cfgScript.value.trim();
+    if (!raw) { showErr("Paste a JSON debate script first."); return; }
+    raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const first = raw.indexOf("{"), last = raw.lastIndexOf("}");
+    if (first > 0 && last > first) raw = raw.slice(first, last + 1);
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch (e) { showErr("Invalid JSON: " + e.message); return; }
+    try { applyScript(parsed, cfgTopic.value.trim(), readRoster()); }
+    catch (e) { showErr(e.message); }
+  });
+
+  modalBg.addEventListener("click", e => { if (e.target === modalBg) closeConfig(); });
+
+  fullRender();
+})();
+</script>
